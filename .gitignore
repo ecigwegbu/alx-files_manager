@@ -1,0 +1,9 @@
+node_modules
+v0
+*.bak*
+*.bak.*
+*.tmp*
+*.tmp.*
+vscode
+.vscode
+*pct
