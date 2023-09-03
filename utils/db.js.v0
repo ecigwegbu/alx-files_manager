@@ -27,18 +27,17 @@ class DBClient {
   isAlive() {
     return this.isConnected;
   }
-
+/*
   async nbUsers() {
+    await this.isConnected;
+    this.client.db
     // return the number of documents in the collection users
-    const nb = await this.db.collection('users').countDocuments();
-    return nb;
   }
 
   async nbFiles() {
     // return number of documents in the collection files
-    const nb = await this.db.collection('files').countDocuments();
-    return nb;
   }
+*/
 }
 
 const dbClient = new DBClient();
