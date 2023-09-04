@@ -14,7 +14,7 @@ const postUpload = async (req, res) => {
 
     // Check if header present
     if (!sessionHeader) {
-      res.status(401).send({ error: 'Unauthorized1' });
+      res.status(401).send({ error: 'Unauthorized' });
       return;
     }
     // if token matches retrieve userId
@@ -22,7 +22,7 @@ const postUpload = async (req, res) => {
     try {
       userId = await redisClient.get(`auth_${sessionHeader}`);
       if (!userId) {
-        res.status(401).send({ error: 'Unauthorized2' });
+        res.status(401).send({ error: 'Unauthorized' });
         return;
       }
     } catch (err) {
