@@ -10,13 +10,18 @@ const postNew = async (req, res) => {
     const { email, password } = req.body;
     if (!email) {
       res.status(400).send({ error: 'Missing email' });
-    } else if (!password) {
+      res.end();
+      return;
+    }
+    if (!password) {
       res.status(400).send({ error: 'Missing password' });
+      return;
     }
 
     try {
       await dbClient.users.findOne({ email });
       res.status(400).send({ error: 'Already exist' });
+      return;
     } catch (err) {
       // hash password
       const hashedPassword = crypto.createHash('sha1').update(password).digest('hex');
