@@ -62,53 +62,8 @@ const getConnect = async (req, res) => {
 
 const getDisconnect = async (req, res) => {
   if (dbsAlive()) {
-    // get authorisation header
+    // get session (x-token) header
     const sessionHeader = req.headers['x-token'];
-    // console.log('req Header:', req.headers['X-Token']);
-
-    // Decode and parse the Authorization header
-    if (!sessionHeader) {
-      res.status(401).send({ error: 'Unauthorized' });
-      return;
-    }
-    let userId;
-    try {
-      const userId = await redisClient.get(`auth_${sessionHeader.token}`);
-      if (!userId) {
-        res.status(401).send({ error: 'Unauthorized' });
-        return;
-      }
-    } catch (err) {
-      res.status(500).send({ error: 'Redis Get Error' });
-      return;
-    }
-    // now you have a valid userId and token!
-    // delete key from Redis:
-
-    try {
-      await redisClient.del(`auth_${sessionHeader.token}`);
-    } catch (err) {
-      res.status(500).send({ error: 'Redis Del Error' });
-      return;
-    }
-    // delete user from MongoDB
-    try {
-      await dbClient.db.collection('users').deleteOne({ _id: new ObjectId(userId) });
-    } catch (err) {
-      res.status(500).send({ error: 'MongoDB Del Error' });
-      return;
-    }
-    res.status(204).end();
-  } else {
-    res.status(500).send({ error: 'Database not alive' });
-  }
-};
-
-const getMe = async (req, res) => {
-  if (dbsAlive()) {
-    // get authorisation header
-    const sessionHeader = req.headers['x-token'];
-    // console.log('req Header:', req.headers['X-Token']);
 
     // Check if header present
     if (!sessionHeader) {
@@ -117,11 +72,8 @@ const getMe = async (req, res) => {
     }
     // if token matches retrieve userId
     let userId;
-    // console.log('-->--> sessionHeader', sessionHeader);
-    // console.log('-->--> sessionHeader.token', sessionHeader.token);
     try {
       userId = await redisClient.get(`auth_${sessionHeader}`);
-      // console.log('-->type of userid:', typeof userId);
       if (!userId) {
         res.status(401).send({ error: 'Unauthorized' });
         return;
@@ -132,15 +84,63 @@ const getMe = async (req, res) => {
     }
     // now you have a valid userId and token!
     // retrieve user from MongoDB
-    // console.log('-->userId:', userId);
-    // console.log(',,,,,,,Object id:',  new ObjectId(userId));
     let user;
     try {
       user = await dbClient.db.collection('users').findOne({ _id: new ObjectId(userId) });
     } catch (err) {
       res.status(500).send({ error: 'MongoDB Search Error' });
     }
-    // console.log('-->user:', user);
+    if (!user) {
+      res.status(401).send({ error: 'Unauthorized' });
+      return;
+    }
+    // delete key in redis
+    try {
+      const deletionCount = await redisClient.del(`auth_${sessionHeader}`);
+      if (!deletionCount) {
+        res.status(500).send({ error: 'Redis Del error' });
+        return;
+      }
+    } catch (err) {
+      res.status(500).send({ error: 'Redis Del Error' });
+      return;
+    }
+    res.status(204).end();
+  } else {
+    res.status(500).send({ error: 'Database not alive' });
+  }
+};
+
+const getMe = async (req, res) => {
+  if (dbsAlive()) {
+    // get session (x-token) header
+    const sessionHeader = req.headers['x-token'];
+
+    // Check if header present
+    if (!sessionHeader) {
+      res.status(401).send({ error: 'Unauthorized' });
+      return;
+    }
+    // if token matches retrieve userId
+    let userId;
+    try {
+      userId = await redisClient.get(`auth_${sessionHeader}`);
+      if (!userId) {
+        res.status(401).send({ error: 'Unauthorized' });
+        return;
+      }
+    } catch (err) {
+      res.status(500).send({ error: 'Redis Get Error' });
+      return;
+    }
+    // now you have a valid userId and token!
+    // retrieve user from MongoDB
+    let user;
+    try {
+      user = await dbClient.db.collection('users').findOne({ _id: new ObjectId(userId) });
+    } catch (err) {
+      res.status(500).send({ error: 'MongoDB Search Error' });
+    }
     res.status(200).send({ id: userId, email: user.email });
   } else {
     res.status(500).send({ error: 'Database not alive' });
