@@ -19,7 +19,7 @@ const postNew = async (req, res) => {
     }
 
     try {
-      await dbClient.users.findOne({ email });
+      await dbClient.db.collection('users').findOne({ email });
       res.status(400).send({ error: 'Already exist' });
       return;
     } catch (err) {
