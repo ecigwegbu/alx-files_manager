@@ -1,7 +1,7 @@
 // contains all endpoints
 import express from 'express';
 import { statusRoute, statsRoute } from '../controllers/AppController';
-import usersRoute from '../controllers/UsersController.js';
+import usersRoute from '../controllers/UsersController';
 
 const routes = express.Router();
 
