@@ -37,7 +37,7 @@ const postNew = async (req, res) => {
       { email, password: hashedPassword },
     );
     // respond to client
-    res.status(200).send({ id: `${result.insertedId}`, email });
+    res.status(201).send({ id: `${result.insertedId}`, email });
   } else {
     res.status(500).send({ Error: 'Database not alive' });
   }
