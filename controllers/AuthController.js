@@ -105,7 +105,7 @@ const getDisconnect = async (req, res) => {
       res.status(500).send({ error: 'Redis Del Error' });
       return;
     }
-    res.status(204).end();
+    res.status(204);
   } else {
     res.status(500).send({ error: 'Database not alive' });
   }
