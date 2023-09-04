@@ -3,6 +3,7 @@ import express from 'express';
 import { getStatus, getStats } from '../controllers/AppController';
 import postNew from '../controllers/UsersController';
 import { getConnect, getDisconnect, getMe } from '../controllers/AuthController';
+import postUpload from '../controllers/FilesController';
 
 const routes = express.Router();
 
@@ -12,5 +13,6 @@ routes.post('/users', postNew);
 routes.get('/connect', getConnect);
 routes.get('/disconnect', getDisconnect);
 routes.get('/users/me', getMe);
+routes.post('/files', postUpload);
 
 module.exports = routes;
