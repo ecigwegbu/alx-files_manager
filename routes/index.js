@@ -1,12 +1,12 @@
 // contains all endpoints
 import express from 'express';
-import { statusRoute, statsRoute } from '../controllers/AppController';
-import usersRoute from '../controllers/UsersController';
+import { getStatus, getStats } from '../controllers/AppController';
+import postNew from '../controllers/UsersController';
 
 const routes = express.Router();
 
-routes.get('/status', statusRoute);
-routes.get('/stats', statsRoute);
-routes.post('/users', usersRoute);
+routes.get('/status', getStatus);
+routes.get('/stats', getStats);
+routes.post('/users', postNew);
 
 module.exports = routes;

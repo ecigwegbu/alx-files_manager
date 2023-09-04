@@ -5,7 +5,7 @@ import dbClient from '../utils/db';
 
 const dbsAlive = () => (redisClient.isAlive() && dbClient.isAlive());
 
-const usersRoute = async (req, res) => {
+const postNew = async (req, res) => {
   if (dbsAlive()) {
     const { email, password } = req.body;
     if (!email) {
@@ -32,4 +32,4 @@ const usersRoute = async (req, res) => {
   }
 };
 
-export default usersRoute;
+export default postNew;
