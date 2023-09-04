@@ -26,12 +26,13 @@ const postNew = async (req, res) => {
         return;
       }
     } catch (err) {
-      res.status(500).send({ Error: 'User Collection Error' });
+      res.status(500).send({ error: 'User Collection error' });
       return;
     }
     // hash password
-    const salt = 'GYt59Hvfgwq+tPut6-iuytrdseboy';
-    const hashedPassword = sha1(`${password}${salt}`);
+    // const salt = 'GYt59Hvfgwq+tPut6-iuytrdseboy';
+    // const hashedPassword = sha1(`${password}${salt}`);
+    const hashedPassword = sha1(`${password}`);
     // add user to db
     const result = await dbClient.db.collection('users').insertOne(
       { email, password: hashedPassword },
@@ -39,7 +40,7 @@ const postNew = async (req, res) => {
     // respond to client
     res.status(201).send({ id: `${result.insertedId}`, email });
   } else {
-    res.status(500).send({ Error: 'Database not alive' });
+    res.status(500).send({ error: 'Database not alive' });
   }
 };
 
