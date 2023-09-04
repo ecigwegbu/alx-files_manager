@@ -1,5 +1,5 @@
 // contains the definitions of /users endpoint
-import crypto from 'crypto';
+import sha1 from 'sha1';
 import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
 
@@ -30,8 +30,8 @@ const postNew = async (req, res) => {
       return;
     }
     // hash password
-    const salt = crypto.randomBytes(16).toString('hex');
-    const hashedPassword = crypto.createHash('sha1', salt).update(password).digest('hex');
+    const salt = 'GYt59Hvfgwq+tPut6-iuytrdseboy';
+    const hashedPassword = sha1(`${password}${salt}`);
     // add user to db
     const result = await dbClient.db.collection('users').insertOne(
       { email, password: hashedPassword },
