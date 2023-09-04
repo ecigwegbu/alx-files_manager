@@ -24,7 +24,8 @@ const postNew = async (req, res) => {
       return;
     } catch (err) {
       // hash password
-      const hashedPassword = crypto.createHash('sha1').update(password).digest('hex');
+      const salt = crypto.randomBytes(16).toString('hex');
+      const hashedPassword = crypto.createHash('sha1', salt).update(password).digest('hex');
       // add user to db
       const result = await dbClient.db.collection('users').insertOne(
         { email, password: hashedPassword },
