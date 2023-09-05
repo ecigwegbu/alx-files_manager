@@ -53,10 +53,12 @@ const postUpload = async (req, res) => {
     }
     // Validate parentId
     if (parentId) {
+      // console.log('ParentId:', parentId);
       // Lookup parentId in database
       let parentFile;
       try {
-        parentFile = await dbClient.db.collection('files').findOne({ parentId });
+        parentFile = await dbClient.db.collection('files').findOne({ id: parentId });
+        // console.log('ParentFile:', parentFile);
         if (!parentFile) {
           // Parent Not Found
           res.status(400).json({ error: 'Parent not found' });
@@ -74,56 +76,66 @@ const postUpload = async (req, res) => {
         return;
       }
     }
-    // Define the absolute folder path; assumes process.env.FOLDER_PATH is relative to cwd
-    // const folderPath = process.env.FOLDER_PATH
-    //   ? path.join(process.cwd(), process.env.FOLDER_PATH)
-    //   : '/tmp/files_manager';
-    let folderPath;
-    if (process.env.FOLDER_PATH) {
-      if (process.env.FOLDER_PATH.startsWith('/')) {
-        // absolute folder given
-        folderPath = process.env.FOLDER_PATH;
-      } else {
-        // join relative
-        folderPath = path.join(process.cwd(), process.env.FOLDER_PATH);
-      }
-    } else {
-      // use /tmp/files_manager
-      folderPath = '/tmp/files_manager';
-    }
-    // establish localPath (absolute filename)
-    const fileId = `${uuidv4()}.txt`;
-    const localPath = path.join(folderPath, fileId); // absolute path of file
-    // create the folder if it does not exist
-    try {
-      await fs.access(folderPath);
-    } catch (err) {
-      const mkdir = util.promisify(fs.mkdir);
-      await mkdir(folderPath, { recursive: true });
-    }
-    // save the file to disk
-    const buffer = Buffer.from(data, 'base64'); // converts to hex; will be plain text in file
-    const writeFile = util.promisify(fs.writeFile);
-    await writeFile(localPath, buffer);
-    // save file to DB
-    if (type === 'file' || type === 'image') {
-      // file
-      try {
-        await dbClient.db.collection('files').insertOne({
-          userId, name, type, isPublic, parentId, localPath,
-        });
-      } catch (err) {
-        console.log('Error: DB save error');
-        throw err;
-      }
-    }
-
+    const fileId = uuidv4();
     if (type === 'folder') {
       // folder
       try {
         await dbClient.db.collection('files').insertOne({
           userId, name, type, isPublic, parentId,
         });
+        // console.log('-->DB save folder:', dbInsertFolder);
+      } catch (err) {
+        console.log('Error: DB save error');
+        throw err;
+      }
+      // save file to DB
+      try {
+        await dbClient.db.collection('files').insertOne({
+          id: fileId, userId, name, type, isPublic, parentId,
+        });
+        // console.log('-->DB save file|image:', dbInsertFile);
+      } catch (err) {
+        console.log('Error: DB save error');
+        throw err;
+      }
+    } else if (type === 'file' || type === 'image') {
+      // Define the absolute folder path; assumes process.env.FOLDER_PATH is relative to cwd
+      // const folderPath = process.env.FOLDER_PATH
+      //   ? path.join(process.cwd(), process.env.FOLDER_PATH)
+      //   : '/tmp/files_manager';
+      let folderPath;
+      if (process.env.FOLDER_PATH) {
+        if (process.env.FOLDER_PATH.startsWith('/')) {
+          // absolute folder given
+          folderPath = process.env.FOLDER_PATH;
+        } else {
+          // join relative
+          folderPath = path.join(process.cwd(), process.env.FOLDER_PATH);
+        }
+      } else {
+        // use /tmp/files_manager
+        folderPath = '/tmp/files_manager';
+      }
+      // establish localPath (absolute filename)
+      // const fileId = `${uuidv4()}`;
+      const localPath = path.join(folderPath, fileId); // absolute path of file
+      // create the folder if it does not exist
+      try {
+        await fs.access(folderPath);
+      } catch (err) {
+        const mkdir = util.promisify(fs.mkdir);
+        await mkdir(folderPath, { recursive: true });
+      }
+      // save the file to disk
+      const buffer = Buffer.from(data, 'base64'); // converts to hex; will be plain text in file
+      const writeFile = util.promisify(fs.writeFile);
+      await writeFile(localPath, buffer);
+      // save file to DB
+      try {
+        await dbClient.db.collection('files').insertOne({
+          id: fileId, userId, name, type, isPublic, parentId, localPath,
+        });
+        // console.log('-->DB save file|image:', dbInsertFile);
       } catch (err) {
         console.log('Error: DB save error');
         throw err;
