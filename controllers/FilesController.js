@@ -131,4 +131,110 @@ const postUpload = async (req, res) => {
   }
 };
 
-export default postUpload;
+const getShow = async (req, res) => {
+  if (dbsAlive()) {
+    // get session (x-token) header
+    const sessionHeader = req.headers['x-token'];
+
+    // Check if header present
+    if (!sessionHeader) {
+      res.status(401).send({ error: 'Unauthorized' });
+      return;
+    }
+    // if token matches retrieve userId
+    let userId;
+    try {
+      userId = await redisClient.get(`auth_${sessionHeader}`);
+      if (!userId) {
+        res.status(401).send({ error: 'Unauthorized' });
+        return;
+      }
+    } catch (err) {
+      res.status(500).send({ error: 'Redis Get Error' });
+      return;
+    }
+
+    // process route
+    // Lookup linkedFile in database
+    const fileId = req.params.id;
+    let linkedFile;
+    try {
+      linkedFile = await dbClient.db.collection('files').findOne({ _id: new ObjectId(fileId), userId });
+      // console.log('linkedFile:', linkedFile);
+      if (!linkedFile) {
+        // No linked file
+        res.status(404).json({ error: 'Not found' });
+        return;
+      }
+    } catch (err) {
+      // MDB Read error
+      res.status(500).json({ error: 'DB Read Error' });
+      return;
+    }
+    // send file back to client
+    res.status(200).send({
+      id: linkedFile._id,
+      userId: linkedFile.userId,
+      type: linkedFile.type,
+      isPublic: linkedFile.isPublic,
+      parentId: linkedFile.parentId,
+    });
+  } else {
+    res.status(500).send({ error: 'Database not alive' });
+  }
+};
+
+const getIndex = async (req, res) => {
+  if (dbsAlive()) {
+    // get session (x-token) header
+    const sessionHeader = req.headers['x-token'];
+
+    // Check if header present
+    if (!sessionHeader) {
+      res.status(401).send({ error: 'Unauthorized' });
+      return;
+    }
+    // if token matches retrieve userId
+    let userId;
+    try {
+      userId = await redisClient.get(`auth_${sessionHeader}`);
+      if (!userId) {
+        res.status(401).send({ error: 'Unauthorized' });
+        return;
+      }
+    } catch (err) {
+      res.status(500).send({ error: 'Redis Get Error' });
+      return;
+    }
+
+    // process route
+    // Lookup linkedFile in database
+    const fileId = req.params.id;
+    let linkedFile;
+    try {
+      linkedFile = await dbClient.db.collection('files').findOne({ _id: new ObjectId(fileId), userId });
+      // console.log('linkedFile:', linkedFile);
+      if (!linkedFile) {
+        // No linked file
+        res.status(404).json({ error: 'Not found' });
+        return;
+      }
+    } catch (err) {
+      // MDB Read error
+      res.status(500).json({ error: 'DB Read Error' });
+      return;
+    }
+    // send file back to client
+    res.status(200).send({
+      id: linkedFile._id,
+      userId: linkedFile.userId,
+      type: linkedFile.type,
+      isPublic: linkedFile.isPublic,
+      parentId: linkedFile.parentId,
+    });
+  } else {
+    res.status(500).send({ error: 'Database not alive' });
+  }
+};
+
+export { postUpload, getShow, getIndex };
