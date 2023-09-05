@@ -78,9 +78,20 @@ const postUpload = async (req, res) => {
     // const folderPath = process.env.FOLDER_PATH
     //   ? path.join(process.cwd(), process.env.FOLDER_PATH)
     //   : '/tmp/files_manager';
-
-    const folderPath = '/tmp/file_manager';
-
+    let folderPath;
+    if (process.env.FOLDER_PATH) {
+      if (process.env.FOLDER_PATH.startsWith('/')) {
+        // absolute folder given
+        folderPath = process.env.FOLDER_PATH;
+      } else {
+        // join relative
+        folderPath = path.join(process.cwd(), process.env.FOLDER_PATH);
+      }
+    } else {
+      // use /tmp/files_manager
+      folderPath = '/tmp/files_manager';
+    }
+    // establish localPath (absolute filename)
     const fileId = `${uuidv4()}.txt`;
     const localPath = path.join(folderPath, fileId); // absolute path of file
     // create the folder if it does not exist
