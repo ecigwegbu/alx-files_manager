@@ -1,12 +1,12 @@
 // contains definitions for the /files endpoint
-import { v4 as uuidv4 } from 'uuid';
+// import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
+import { ObjectId } from 'mongodb';
 import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
 
 const fs = require('fs');
 const util = require('util');
-// import { ObjectId } from 'mongodb';
 // import sha1 from 'sha1';
 
 const dbsAlive = () => (redisClient.isAlive() && dbClient.isAlive());
@@ -57,7 +57,7 @@ const postUpload = async (req, res) => {
       // Lookup parentId in database
       let parentFile;
       try {
-        parentFile = await dbClient.db.collection('files').findOne({ id: parentId });
+        parentFile = await dbClient.db.collection('files').findOne({ _id: new ObjectId(parentId) });
         // console.log('ParentFile:', parentFile);
         if (!parentFile) {
           // Parent Not Found
@@ -76,33 +76,20 @@ const postUpload = async (req, res) => {
         return;
       }
     }
-    const fileId = uuidv4();
-    if (type === 'folder') {
-      // folder
-      try {
-        await dbClient.db.collection('files').insertOne({
-          userId, name, type, isPublic, parentId,
-        });
-        // console.log('-->DB save folder:', dbInsertFolder);
-      } catch (err) {
-        console.log('Error: DB save error');
-        throw err;
-      }
-      // save file to DB
-      try {
-        await dbClient.db.collection('files').insertOne({
-          id: fileId, userId, name, type, isPublic, parentId,
-        });
-        // console.log('-->DB save file|image:', dbInsertFile);
-      } catch (err) {
-        console.log('Error: DB save error');
-        throw err;
-      }
-    } else if (type === 'file' || type === 'image') {
-      // Define the absolute folder path; assumes process.env.FOLDER_PATH is relative to cwd
-      // const folderPath = process.env.FOLDER_PATH
-      //   ? path.join(process.cwd(), process.env.FOLDER_PATH)
-      //   : '/tmp/files_manager';
+    // Save file/image/folder to DB;
+    let fileId; // file/image/folder id
+    try {
+      const result = await dbClient.db.collection('files').insertOne({
+        userId, name, type, isPublic, parentId, // localPath,
+      });
+      fileId = result.insertedId.toString();
+      // console.log('-->fileId:', fileId);
+    } catch (err) {
+      console.log('Error: DB save error');
+      throw err;
+    }
+    // process file to disk
+    if (type === 'file' || type === 'image') {
       let folderPath;
       if (process.env.FOLDER_PATH) {
         if (process.env.FOLDER_PATH.startsWith('/')) {
@@ -119,6 +106,10 @@ const postUpload = async (req, res) => {
       // establish localPath (absolute filename)
       // const fileId = `${uuidv4()}`;
       const localPath = path.join(folderPath, fileId); // absolute path of file
+      // Update DB with localPath
+      await dbClient.db.collection('files').updateOne({ _id: new ObjectId(fileId) }, { $set: { localPath } });
+
+      // console.log('Update File Status:', updateStatus);
       // create the folder if it does not exist
       try {
         await fs.access(folderPath);
@@ -130,16 +121,6 @@ const postUpload = async (req, res) => {
       const buffer = Buffer.from(data, 'base64'); // converts to hex; will be plain text in file
       const writeFile = util.promisify(fs.writeFile);
       await writeFile(localPath, buffer);
-      // save file to DB
-      try {
-        await dbClient.db.collection('files').insertOne({
-          id: fileId, userId, name, type, isPublic, parentId, localPath,
-        });
-        // console.log('-->DB save file|image:', dbInsertFile);
-      } catch (err) {
-        console.log('Error: DB save error');
-        throw err;
-      }
     }
     // return file or folder
     res.status(201).send({
