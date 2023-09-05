@@ -78,7 +78,8 @@ const postUpload = async (req, res) => {
     // const folderPath = process.env.FOLDER_PATH
     //   ? path.join(process.cwd(), process.env.FOLDER_PATH)
     //   : '/tmp/files_manager';
-    const folderPath = '/tmp/files_manager';
+
+    const folderPath = '/tmp/file_manager';
 
     const fileId = `${uuidv4()}.txt`;
     const localPath = path.join(folderPath, fileId); // absolute path of file
