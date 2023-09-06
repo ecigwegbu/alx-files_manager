@@ -254,4 +254,144 @@ const getIndex = async (req, res) => {
   }
 };
 
-export { postUpload, getShow, getIndex };
+const putPublish = async (req, res) => {
+  if (dbsAlive()) {
+    // get session (x-token) header
+    const sessionHeader = req.headers['x-token'];
+
+    // Check if header present
+    if (!sessionHeader) {
+      res.status(401).send({ error: 'Unauthorized' });
+      return;
+    }
+    // if token matches retrieve userId
+    let userId;
+    try {
+      userId = await redisClient.get(`auth_${sessionHeader}`);
+      if (!userId) {
+        res.status(401).send({ error: 'Unauthorized' });
+        return;
+      }
+    } catch (err) {
+      res.status(500).send({ error: 'Redis Get Error' });
+      return;
+    }
+    // get query parameters
+    const { parentId = 0, page: rawPage } = req.query;
+    // validate page:
+    let page;
+    if (rawPage) {
+      const isDigits = /^\d+$/.test(rawPage);
+      page = parseInt(rawPage, 10);
+      if (!isDigits || !Number.isInteger(page)) {
+        res.status(400).send({ error: 'Page must be an integer' });
+        return;
+      }
+    } else {
+      page = 0;
+    }
+    const pageSize = 20;
+    // process route
+    // Lookup linkedFiles in database for given userId, parentId and page
+    let linkedFiles;
+    try {
+      const pipeline = [
+        { $match: { userId, parentId } },
+        { $skip: page * pageSize },
+        { $limit: pageSize },
+      ];
+      linkedFiles = await dbClient.db.collection('files').aggregate(pipeline).toArray();
+      // console.log('linkedFile:', linkedFile);
+      if (linkedFiles.length === 0) {
+        // No linked file
+        res.status(200).json([]);
+        return;
+      }
+    } catch (err) {
+      // MDB Read error
+      res.status(500).json({ error: 'DB Read Error' });
+      return;
+    }
+    // replace _id with id in each document in list
+    const files = linkedFiles.map((obj) => {
+      const { _id, localPath, ...rest } = obj;
+      return { id: _id, ...rest };
+    });
+    // send file back to client
+    res.status(200).send(files);
+  } else {
+    res.status(500).send({ error: 'Database not alive' });
+  }
+};
+
+const putUnpublish = async (req, res) => {
+  if (dbsAlive()) {
+    // get session (x-token) header
+    const sessionHeader = req.headers['x-token'];
+
+    // Check if header present
+    if (!sessionHeader) {
+      res.status(401).send({ error: 'Unauthorized' });
+      return;
+    }
+    // if token matches retrieve userId
+    let userId;
+    try {
+      userId = await redisClient.get(`auth_${sessionHeader}`);
+      if (!userId) {
+        res.status(401).send({ error: 'Unauthorized' });
+        return;
+      }
+    } catch (err) {
+      res.status(500).send({ error: 'Redis Get Error' });
+      return;
+    }
+    // get query parameters
+    const { parentId = 0, page: rawPage } = req.query;
+    // validate page:
+    let page;
+    if (rawPage) {
+      const isDigits = /^\d+$/.test(rawPage);
+      page = parseInt(rawPage, 10);
+      if (!isDigits || !Number.isInteger(page)) {
+        res.status(400).send({ error: 'Page must be an integer' });
+        return;
+      }
+    } else {
+      page = 0;
+    }
+    const pageSize = 20;
+    // process route
+    // Lookup linkedFiles in database for given userId, parentId and page
+    let linkedFiles;
+    try {
+      const pipeline = [
+        { $match: { userId, parentId } },
+        { $skip: page * pageSize },
+        { $limit: pageSize },
+      ];
+      linkedFiles = await dbClient.db.collection('files').aggregate(pipeline).toArray();
+      // console.log('linkedFile:', linkedFile);
+      if (linkedFiles.length === 0) {
+        // No linked file
+        res.status(200).json([]);
+        return;
+      }
+    } catch (err) {
+      // MDB Read error
+      res.status(500).json({ error: 'DB Read Error' });
+      return;
+    }
+    // replace _id with id in each document in list
+    const files = linkedFiles.map((obj) => {
+      const { _id, localPath, ...rest } = obj;
+      return { id: _id, ...rest };
+    });
+    // send file back to client
+    res.status(200).send(files);
+  } else {
+    res.status(500).send({ error: 'Database not alive' });
+  }
+};
+
+export { postUpload, getShow, getIndex, putPublish, putUnpublish };
