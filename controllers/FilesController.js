@@ -88,7 +88,7 @@ const postUpload = async (req, res) => { // update for task 9
       // console.log('-->fileId:', fileId);
     } catch (err) {
       console.log('Error: DB save error');
-      throw err;
+      // throw err;
     }
     // process file to disk
     if (type === 'file' || type === 'image') {
@@ -176,7 +176,7 @@ const getShow = async (req, res) => {
     let linkedFile;
     try {
       linkedFile = await dbClient.db.collection('files').findOne({ _id: new ObjectId(fileId), userId });
-      // console.log('linkedFile:', linkedFile);
+      // console.log('-->-->linkedFile._id', linkedFile._id);
       if (!linkedFile) {
         // No linked file
         res.status(404).json({ error: 'Not found' });
@@ -184,6 +184,7 @@ const getShow = async (req, res) => {
       }
     } catch (err) {
       // MDB Read error
+      // throw err;
       res.status(500).json({ error: 'DB Read Error' });
       return;
     }
@@ -191,6 +192,7 @@ const getShow = async (req, res) => {
     res.status(200).send({
       id: linkedFile._id,
       userId: linkedFile.userId,
+      name: linkedFile.name,
       type: linkedFile.type,
       isPublic: linkedFile.isPublic,
       parentId: linkedFile.parentId,
