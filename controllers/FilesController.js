@@ -206,15 +206,38 @@ const getIndex = async (req, res) => {
       res.status(500).send({ error: 'Redis Get Error' });
       return;
     }
-
+    // get query parameters
+    const { parentId = 0, page: rawPage } = req.query;
+    // validate page:
+    let page;
+    if (rawPage) {
+      const isDigits = /^\d+$/.test(rawPage);
+      page = parseInt(rawPage, 10);
+      if (!isDigits || !Number.isInteger(page)) {
+        res.status(400).send({ error: 'Page must be an integer' });
+        return;
+      }
+    } else {
+      page = 0;
+    }
+    const pageSize = 20;
     // process route
-    // Lookup linkedFile in database
-    const fileId = req.params.id;
-    let linkedFile;
+    // Lookup linkedFiles in database
+    let linkedFiles;
     try {
-      linkedFile = await dbClient.db.collection('files').findOne({ _id: new ObjectId(fileId), userId });
+      if (parentId) {
+        linkedFiles = await dbClient.db.collection('files').find(
+          { userId, parentId },
+          { skip: page * pageSize, limit: pageSize },
+        ).toArray();
+      } else {
+        linkedFiles = await dbClient.db.collection('files').find(
+          { userId },
+          { skip: page * pageSize, limit: pageSize },
+        ).toArray();
+      }
       // console.log('linkedFile:', linkedFile);
-      if (!linkedFile) {
+      if (linkedFiles.length === 0) {
         // No linked file
         res.status(404).json({ error: 'Not found' });
         return;
@@ -224,14 +247,13 @@ const getIndex = async (req, res) => {
       res.status(500).json({ error: 'DB Read Error' });
       return;
     }
-    // send file back to client
-    res.status(200).send({
-      id: linkedFile._id,
-      userId: linkedFile.userId,
-      type: linkedFile.type,
-      isPublic: linkedFile.isPublic,
-      parentId: linkedFile.parentId,
+    // replace _id with id in each document in list
+    const files = linkedFiles.map((obj) => {
+      const { _id, localPath, ...rest } = obj;
+      return { id: _id, ...rest };
     });
+    // send file back to client
+    res.status(200).send(files);
   } else {
     res.status(500).send({ error: 'Database not alive' });
   }
