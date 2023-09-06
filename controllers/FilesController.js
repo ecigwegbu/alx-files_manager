@@ -273,8 +273,55 @@ const getIndex = async (req, res) => {
 
 const putPublish = async (req, res) => {
   if (dbsAlive()) {
-    // send status back to client
-    res.status(200).send({ status: 'OK' });
+    const sessionHeader = req.headers['x-token'];
+    // Check if header present
+    if (!sessionHeader) {
+      res.status(401).send({ error: 'Unauthorized' });
+      return;
+    }
+    // if token matches retrieve userId
+    let userId;
+    try {
+      userId = await redisClient.get(`auth_${sessionHeader}`);
+      if (!userId) {
+        res.status(401).send({ error: 'Unauthorized' });
+        return;
+      }
+    } catch (err) {
+      res.status(500).send({ error: 'Redis Get Error' });
+      return;
+    }
+
+    // process route
+    // Lookup linkedFile in database
+    const fileId = req.params.id;
+    let linkedFile;
+    try {
+      linkedFile = await dbClient.db.collection('files').findOne({ _id: new ObjectId(fileId), userId });
+      // console.log('---> type linkedFile:', typeof linkedFile, linkedFile);
+      if (!linkedFile) {
+        // No linked file
+        res.status(404).json({ error: 'Not found' });
+        return;
+      }
+    } catch (err) {
+      // MDB Read error
+      res.status(500).json({ error: 'DB Read Error' });
+      return;
+    }
+    // publish file
+    await dbClient.db.collection('files').updateOne(
+      { _id: linkedFile._id },
+      { $set: { isPublic: true } },
+    );
+    // get public version of linkedFile:
+
+    const {
+      _id, localPath, isPublic, ...rest
+    } = linkedFile;
+    const newObj = { id: _id, isPublic: true, ...rest };
+    // send file back to client
+    res.status(200).send(newObj);
   } else {
     res.status(500).send({ error: 'Database not alive' });
   }
@@ -282,8 +329,57 @@ const putPublish = async (req, res) => {
 
 const putUnpublish = async (req, res) => {
   if (dbsAlive()) {
-    // send status back to client
-    res.status(200).send({ status: 'OK' });
+    const sessionHeader = req.headers['x-token'];
+    // Check if header present
+    if (!sessionHeader) {
+      res.status(401).send({ error: 'Unauthorized' });
+      return;
+    }
+    // if token matches retrieve userId
+    let userId;
+    try {
+      userId = await redisClient.get(`auth_${sessionHeader}`);
+      if (!userId) {
+        res.status(401).send({ error: 'Unauthorized' });
+        return;
+      }
+    } catch (err) {
+      res.status(500).send({ error: 'Redis Get Error' });
+      return;
+    }
+
+    // process route
+    // Lookup linkedFile in database
+    const fileId = req.params.id;
+    let linkedFile;
+    try {
+      linkedFile = await dbClient.db.collection('files').findOne({ _id: new ObjectId(fileId), userId });
+      // console.log('---> type linkedFile:', typeof linkedFile, linkedFile);
+      if (!linkedFile) {
+        // No linked file
+        res.status(404).json({ error: 'Not found' });
+        return;
+      }
+    } catch (err) {
+      // MDB Read error
+      res.status(500).json({ error: 'DB Read Error' });
+      return;
+    }
+    // publish file
+    await dbClient.db.collection('files').updateOne(
+      { _id: linkedFile._id },
+      { $set: { isPublic: true } },
+    );
+    // get public version of linkedFile:
+
+    const {
+      _id, localPath, isPublic, ...rest
+    } = linkedFile;
+    const newObj = {
+      id: _id, isPublic: false, ...rest,
+    };
+    // send unpublished file back to client
+    res.status(200).send(newObj);
   } else {
     res.status(500).send({ error: 'Database not alive' });
   }
