@@ -36,7 +36,7 @@ const postUpload = async (req, res) => {
     // now you have a valid userId and token!
     // get file input from request
     const {
-      name, type, isPublic = false, parentId = 0, data,
+      name, type, isPublic = false, parentId = '0', data,
     } = req.body;
     // Input validation:
     if (!name) {
@@ -207,7 +207,7 @@ const getIndex = async (req, res) => {
       return;
     }
     // get query parameters
-    const { parentId = 0, page: rawPage } = req.query;
+    const { parentId = '0', page: rawPage } = req.query;
     // validate page:
     let page;
     if (rawPage) {
@@ -222,20 +222,13 @@ const getIndex = async (req, res) => {
     }
     const pageSize = 20;
     // process route
-    // Lookup linkedFiles in database
+    // Lookup linkedFiles in database for given userId, parentId and page
     let linkedFiles;
     try {
-      if (parentId) {
-        linkedFiles = await dbClient.db.collection('files').find(
-          { userId, parentId },
-          { skip: page * pageSize, limit: pageSize },
-        ).toArray();
-      } else {
-        linkedFiles = await dbClient.db.collection('files').find(
-          { userId },
-          { skip: page * pageSize, limit: pageSize },
-        ).toArray();
-      }
+      linkedFiles = await dbClient.db.collection('files').find(
+        { userId, parentId },
+        { skip: page * pageSize, limit: pageSize },
+      ).toArray();
       // console.log('linkedFile:', linkedFile);
       if (linkedFiles.length === 0) {
         // No linked file

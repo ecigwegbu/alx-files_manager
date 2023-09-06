@@ -17,5 +17,4 @@ routes.post('/files', postUpload);
 routes.get('/files/:id', getShow);
 routes.get('/files', getIndex);
 
-
 module.exports = routes;
