@@ -225,14 +225,16 @@ const getIndex = async (req, res) => {
     // Lookup linkedFiles in database for given userId, parentId and page
     let linkedFiles;
     try {
-      linkedFiles = await dbClient.db.collection('files').find(
-        { userId, parentId },
-        { skip: page * pageSize, limit: pageSize },
-      ).toArray();
+      const pipeline = [
+        { $match: { userId, parentId } },
+        { $skip: page * pageSize },
+        { $limit: pageSize },
+      ];
+      linkedFiles = await dbClient.db.collection('files').aggregate(pipeline).toArray();
       // console.log('linkedFile:', linkedFile);
       if (linkedFiles.length === 0) {
         // No linked file
-        res.status(404).json({ error: 'Not found' });
+        res.status(200).json([]);
         return;
       }
     } catch (err) {
