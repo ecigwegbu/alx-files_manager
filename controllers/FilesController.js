@@ -2,6 +2,7 @@
 // import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import { ObjectId } from 'mongodb';
+import Queue from 'bull';
 import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
 
@@ -11,7 +12,8 @@ const util = require('util');
 
 const dbsAlive = () => (redisClient.isAlive() && dbClient.isAlive());
 
-const postUpload = async (req, res) => {
+// create a new file in DB and in disk
+const postUpload = async (req, res) => { // update for task 9
   if (dbsAlive()) {
     // get session (x-token) header
     const sessionHeader = req.headers['x-token'];
@@ -122,6 +124,20 @@ const postUpload = async (req, res) => {
       const writeFile = util.promisify(fs.writeFile);
       await writeFile(localPath, buffer);
     }
+
+    // update: start a background process for generating thumbnails for image file
+    if (type === 'image') {
+      // image file processing
+      const fileQueue = new Queue('fileQueue', {
+        redis: {
+          host: '127.0.0.1',
+          port: 6379,
+        },
+      });
+      await fileQueue.add({ fileId, userId });
+      // console.log('Processing image file...');
+    }
+
     // return file or folder
     res.status(201).send({
       id: fileId, userId, name, type, isPublic, parentId,
@@ -184,6 +200,7 @@ const getShow = async (req, res) => {
   }
 };
 
+// retrieve all users file documents for a specific parentId and with pagination
 const getIndex = async (req, res) => {
   if (dbsAlive()) {
     // get session (x-token) header
