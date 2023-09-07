@@ -82,11 +82,7 @@ const postUpload = async (req, res) => { // update for task 9
     let fileId; // file/image/folder id
     try {
       const result = await dbClient.db.collection('files').insertOne({
-        userId: new ObjectId(userId),
-        name,
-        type,
-        isPublic,
-        parentId: (parentId ? new ObjectId(parentId) : '0'), // localPath,
+        userId, name, type, isPublic, parentId, // localPath,
       });
       fileId = result.insertedId.toString();
       // console.log('-->fileId:', fileId);
@@ -179,11 +175,8 @@ const getShow = async (req, res) => {
     const fileId = req.params.id;
     let linkedFile;
     try {
-      // console.log('->fileId', fileId);
-      linkedFile = await dbClient.db.collection('files').findOne({
-        _id: new ObjectId(fileId), userId: new ObjectId(userId),
-      });
-      // console.log('-->-->linkedFile._id', linkedFile);
+      linkedFile = await dbClient.db.collection('files').findOne({ _id: new ObjectId(fileId), userId });
+      // console.log('-->-->linkedFile._id', linkedFile._id);
       if (!linkedFile) {
         // No linked file
         res.status(404).json({ error: 'Not found' });
@@ -252,17 +245,11 @@ const getIndex = async (req, res) => {
     let linkedFiles;
     try {
       const pipeline = [
-        {
-          $match: {
-            userId: new ObjectId(userId),
-            parentId: (parentId ? new ObjectId(parentId) : '0'),
-          },
-        },
+        { $match: { userId, parentId } },
         { $skip: page * pageSize },
         { $limit: pageSize },
       ];
       linkedFiles = await dbClient.db.collection('files').aggregate(pipeline).toArray();
-      // console.log('--->B4: userId:', userId, 'parentId:', parentId);
       // console.log('linkedFile:', linkedFile);
       if (linkedFiles.length === 0) {
         // No linked file
@@ -312,9 +299,7 @@ const putPublish = async (req, res) => {
     const fileId = req.params.id;
     let linkedFile;
     try {
-      linkedFile = await dbClient.db.collection('files').findOne({
-        _id: new ObjectId(fileId), userId: new ObjectId(userId),
-      });
+      linkedFile = await dbClient.db.collection('files').findOne({ _id: new ObjectId(fileId), userId });
       // console.log('---> type linkedFile:', typeof linkedFile, linkedFile);
       if (!linkedFile) {
         // No linked file
@@ -370,9 +355,7 @@ const putUnpublish = async (req, res) => {
     const fileId = req.params.id;
     let linkedFile;
     try {
-      linkedFile = await dbClient.db.collection('files').findOne({
-        _id: new ObjectId(fileId), userId: new ObjectId(userId),
-      });
+      linkedFile = await dbClient.db.collection('files').findOne({ _id: new ObjectId(fileId), userId });
       // console.log('---> type linkedFile:', typeof linkedFile, linkedFile);
       if (!linkedFile) {
         // No linked file
