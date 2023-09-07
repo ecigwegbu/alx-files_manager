@@ -3,10 +3,11 @@
 import path from 'path';
 import { ObjectId } from 'mongodb';
 import Queue from 'bull';
+import mime from 'mime-types';
 import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
 
-const fs = require('fs');
+const fs = require('fs').promises;
 const util = require('util');
 // import sha1 from 'sha1';
 
@@ -406,8 +407,77 @@ const putUnpublish = async (req, res) => {
 
 const getFile = async (req, res) => {
   if (dbsAlive()) {
-    // send status back to client
-    res.status(200).send({ status: 'OK' });
+    let authStatus = 0;
+    let userId;
+    const sessionHeader = req.headers['x-token'];
+    // Check if header present
+    if (sessionHeader) {
+      // if token matches retrieve userId
+      try {
+        userId = await redisClient.get(`auth_${sessionHeader}`);
+        if (userId) {
+          authStatus = 1; // authenticated
+        }
+      } catch (err) {
+        authStatus = 0;
+      }
+    }
+
+    // process route
+    // Lookup linkedFile in database
+    const fileId = req.params.id;
+    let linkedFile;
+    try {
+      linkedFile = await dbClient.db.collection('files').findOne({
+        _id: new ObjectId(fileId),
+      });
+      // console.log('---> type linkedFile:', typeof linkedFile, linkedFile);
+      if (!linkedFile) {
+        // No linked file
+        res.status(404).json({ error: 'Not found' });
+        return;
+      }
+    } catch (err) {
+      // MDB Read error
+      res.status(500).json({ error: 'DB Read Error' });
+      return;
+    }
+
+    // process file:
+    if (
+      linkedFile.isPublic === false && (
+        // no user authenticates or not the rightful owner
+        authStatus === 0 || linkedFile.userId.toString() !== userId
+      )
+    ) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    if (linkedFile.type === 'folder') {
+      // folder does not have content
+      res.status(400).send({ error: "A folder doesn't have content" });
+      return;
+    }
+    if (!linkedFile.localPath) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    // get the mime type:
+    // console.log('--->>> File Name:', linkedFile.name);
+    // console.log('--->>> File localPath:', linkedFile.localPath);
+    const mimeType = mime.lookup(linkedFile.name);
+    // console.log('--->>> mime type:', mimeType);
+    if (mimeType) {
+      // Read the file into memory
+      // console.log('--->>> File localPath:', linkedFile.localPath);
+      const data = await fs.readFile(linkedFile.localPath);
+
+      // Set the Content-Type and send the file
+      res.setHeader('Content-Type', mimeType);
+      res.status(200).send(data);
+    } else {
+      res.status(400).send('Invalid MIME type');
+    }
   } else {
     res.status(500).send({ error: 'Database not alive' });
   }
